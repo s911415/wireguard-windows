@@ -75,11 +75,17 @@ startOver:
 					foundDefault4 = true
 				}
 				route.NextHop = netip.IPv4Unspecified()
+				if allowedip.Bits() != 32 {
+					routes[broadcastRoute(allowedip, netip.IPv4Unspecified())] = true
+				}
 			} else if allowedip.Addr().Is6() {
 				if allowedip.Bits() == 0 {
 					foundDefault6 = true
 				}
 				route.NextHop = netip.IPv6Unspecified()
+				if allowedip.Bits() != 128 {
+					routes[broadcastRoute(allowedip, netip.IPv6Unspecified())] = true
+				}
 			}
 			routes[route] = true
 		}
@@ -141,6 +147,29 @@ startOver:
 		return fmt.Errorf("unable to set DNS: %w", err)
 	}
 	return nil
+}
+
+func broadcastRoute(prefix netip.Prefix, nextHop netip.Addr) winipcfg.RouteData {
+	addr := prefix.Masked().Addr()
+	addrBytes := addr.As16()
+	bits := prefix.Bits()
+	totalBits := prefix.Addr().BitLen()
+	for i := bits; i < totalBits; i++ {
+		byteIdx := i / 8
+		bitIdx := 7 - (i % 8)
+		addrBytes[16-totalBits/8+byteIdx] |= 1 << bitIdx
+	}
+	var broadcastAddr netip.Addr
+	if prefix.Addr().Is4() {
+		broadcastAddr = netip.AddrFrom4([4]byte(addrBytes[12:16]))
+	} else {
+		broadcastAddr = netip.AddrFrom16(addrBytes)
+	}
+	return winipcfg.RouteData{
+		Destination: netip.PrefixFrom(broadcastAddr, totalBits),
+		NextHop:     nextHop,
+		Metric:      0,
+	}
 }
 
 func enableFirewall(conf *conf.Config, luid winipcfg.LUID) error {

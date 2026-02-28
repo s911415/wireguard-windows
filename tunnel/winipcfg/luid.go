@@ -258,6 +258,11 @@ func (luid LUID) SetRoutesForFamily(family AddressFamily, routesData []*RouteDat
 			continue
 		}
 		err := luid.AddRoute(rd.Destination, rd.NextHop, rd.Metric)
+		if err == windows.ERROR_OBJECT_ALREADY_EXISTS {
+			if err2 := deleteRouteByDestination(rd.Destination); err2 == nil {
+				err = luid.AddRoute(rd.Destination, rd.NextHop, rd.Metric)
+			}
+		}
 		if err != nil {
 			return err
 		}
@@ -284,6 +289,25 @@ func (luid LUID) DeleteRoute(destination netip.Prefix, nextHop netip.Addr) error
 		return err
 	}
 	return row.Delete()
+}
+
+// FlushRoutes method deletes all interface's routes.
+func deleteRouteByDestination(destination netip.Prefix) error {
+	var tab *mibIPforwardTable2
+	family := windows.AF_INET
+	if destination.Addr().Is6() {
+		family = windows.AF_INET6
+	}
+	if err := getIPForwardTable2(AddressFamily(family), &tab); err != nil {
+		return err
+	}
+	defer tab.free()
+	for _, row := range tab.get() {
+		if row.DestinationPrefix.Prefix() == destination {
+			row.Delete()
+		}
+	}
+	return nil
 }
 
 // FlushRoutes method deletes all interface's routes.
