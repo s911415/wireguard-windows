@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  *
- * Copyright (C) 2019-2022 WireGuard LLC. All Rights Reserved.
+ * Copyright (C) 2019-2026 WireGuard LLC. All Rights Reserved.
  */
 
 package manager
@@ -216,7 +216,7 @@ func (s *ManagerService) Tunnels() ([]Tunnel, error) {
 		return nil, err
 	}
 	tunnels := make([]Tunnel, len(names))
-	for i := 0; i < len(tunnels); i++ {
+	for i := range tunnels {
 		tunnels[i].Name = names[i]
 	}
 	return tunnels, nil

@@ -13,6 +13,7 @@ SOURCE_FILES := $(call rwildcard,,*.go) .deps/go/prepared go.mod go.sum
 RESOURCE_FILES := resources.rc version/version.go manifest.xml $(patsubst %.svg,%.ico,$(wildcard ui/icon/*.svg)) .deps/wireguard-nt/prepared
 
 DEPLOYMENT_HOST ?= winvm
+DEPLOYMENT_ARCH ?= amd64
 DEPLOYMENT_PATH ?= Desktop
 
 all: amd64/wireguard.exe x86/wireguard.exe arm64/wireguard.exe
@@ -25,7 +26,7 @@ define download =
 	if ! mv $$@.unverified $$@; then rm -f $$@.unverified; exit 1; fi
 endef
 
-$(eval $(call download,go.tar.gz,https://go.dev/dl/go1.20.14.linux-amd64.tar.gz,ff445e48af27f93f66bd949ae060d97991c83e11289009d311f25426258f9c44))
+$(eval $(call download,go.tar.gz,https://download.wireguard.com/windows-toolchain/distfiles/go1.26.1-linux_amd64_2026-03-21.tar.gz,47eaffc1fe0a495051b0c894858c567c00fe17cdfda04cbd1b5b5fc8b516e0b1))
 $(eval $(call download,wireguard-nt.zip,https://download.wireguard.com/wireguard-nt/wireguard-nt-0.10.1.zip,772c0b1463d8d2212716f43f06f4594d880dea4f735165bd68e388fc41b81605))
 
 .deps/go/prepared: .distfiles/go.tar.gz
@@ -70,7 +71,7 @@ remaster: export GOPROXY := direct
 remaster: .deps/go/prepared
 	rm -f go.sum go.mod
 	cp go.mod.master go.mod
-	go get -d
+	go get
 	sed -i $(shell curl -L 'https://go.dev/dl/?mode=json&include=all' | jq -r '(".windows-amd64.zip",".linux-amd64.tar.gz") as $$suffix | .[0].files[] | select(.filename|endswith($$suffix)) | ("-e", "s/go[0-9][^ ]*\\\($$suffix)\\([ ,]\\)[a-f0-9]\\+/\(.filename)\\1\(.sha256)/") | @sh') Makefile build.bat
 
 fmt: export GOARCH := amd64
@@ -87,7 +88,7 @@ crowdin:
 	find locales -name messages.gotext.json -exec bash -c '[[ $$(jq ".messages | length" {}) -ne 0 ]] || rm -rf "$$(dirname {})"' \;
 	@$(MAKE) --no-print-directory generate
 
-deploy: amd64/wireguard.exe
+deploy: $(DEPLOYMENT_ARCH)/wireguard.exe
 	-ssh $(DEPLOYMENT_HOST) -- 'taskkill /im wireguard.exe /f'
 	scp $< $(DEPLOYMENT_HOST):$(DEPLOYMENT_PATH)
 

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  *
- * Copyright (C) 2019-2022 WireGuard LLC. All Rights Reserved.
+ * Copyright (C) 2019-2026 WireGuard LLC. All Rights Reserved.
  */
 
 package ringlogger
@@ -156,7 +156,7 @@ func (rl *Ringlogger) WriteTo(out io.Writer) (n int64, err error) {
 	}
 	log := *rl.log
 	i := log.nextIndex
-	for l := uint32(0); l < maxLines; l++ {
+	for l := range uint32(maxLines) {
 		line := &log.lines[(i+l)%maxLines]
 		if line.timeNs == 0 {
 			continue
@@ -196,7 +196,7 @@ func (rl *Ringlogger) FollowFromCursor(cursor uint32) (followLines []FollowLine,
 		i = log.nextIndex
 	}
 
-	for l := 0; l < maxLines; l++ {
+	for range maxLines {
 		line := &log.lines[i%maxLines]
 		if cursor != CursorAll && i%maxLines == log.nextIndex%maxLines {
 			break

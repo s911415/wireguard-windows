@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  *
- * Copyright (C) 2019-2022 WireGuard LLC. All Rights Reserved.
+ * Copyright (C) 2019-2026 WireGuard LLC. All Rights Reserved.
  */
 
 package tunnel
@@ -76,10 +76,7 @@ func monitorMTU(family winipcfg.AddressFamily, ourLUID winipcfg.LUID) ([]winipcf
 			if err != nil {
 				return err
 			}
-			iface.NLMTU = mtu - 80
-			if iface.NLMTU < minMTU {
-				iface.NLMTU = minMTU
-			}
+			iface.NLMTU = max(mtu-80, minMTU)
 			err = iface.Set()
 			if err != nil {
 				return err

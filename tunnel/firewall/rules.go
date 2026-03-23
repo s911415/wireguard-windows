@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  *
- * Copyright (C) 2019-2022 WireGuard LLC. All Rights Reserved.
+ * Copyright (C) 2019-2026 WireGuard LLC. All Rights Reserved.
  */
 
 package firewall
@@ -15,9 +15,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-//
 // Known addresses.
-//
 var (
 	linkLocal = wtFwpV6AddrAndMask{[16]uint8{0xfe, 0x80}, 10}
 
@@ -822,18 +820,6 @@ func permitNdp(session uintptr, baseObjects *baseObjects, weight uint8) error {
 }
 
 func permitHyperV(session uintptr, baseObjects *baseObjects, weight uint8) error {
-	//
-	// Only applicable on Win8+.
-	//
-	{
-		major, minor, _ := windows.RtlGetNtVersionNumbers()
-		win8plus := major > 6 || (major == 6 && minor >= 3)
-
-		if !win8plus {
-			return nil
-		}
-	}
-
 	condition := wtFwpmFilterCondition0{
 		fieldKey:  cFWPM_CONDITION_L2_FLAGS,
 		matchType: cFWP_MATCH_EQUAL,

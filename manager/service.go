@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  *
- * Copyright (C) 2019-2022 WireGuard LLC. All Rights Reserved.
+ * Copyright (C) 2019-2026 WireGuard LLC. All Rights Reserved.
  */
 
 package manager
@@ -252,11 +252,9 @@ func (service *managerService) Execute(args []string, r <-chan svc.ChangeRequest
 	}
 	procsGroup := sync.WaitGroup{}
 	goStartProcess := func(session uint32) {
-		procsGroup.Add(1)
-		go func() {
+		procsGroup.Go(func() {
 			startProcess(session)
-			procsGroup.Done()
-		}()
+		})
 	}
 
 	go checkForUpdates()
