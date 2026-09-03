@@ -37,6 +37,7 @@ type Module struct {
 	nameExports   map[string]uint16
 	entry         uintptr
 	blockedMemory *addressList
+	runtimeFuncs  *windows.RUNTIME_FUNCTION
 }
 
 func (module *Module) BaseAddr() uintptr {
@@ -170,7 +171,10 @@ func (module *Module) registerExceptionHandlers() {
 		return
 	}
 	runtimeFuncs := (*windows.RUNTIME_FUNCTION)(unsafe.Pointer(module.codeBase + uintptr(directory.VirtualAddress)))
-	windows.RtlAddFunctionTable(runtimeFuncs, uint32(uintptr(directory.Size)/unsafe.Sizeof(*runtimeFuncs)), module.codeBase)
+	if !windows.RtlAddFunctionTable(runtimeFuncs, uint32(uintptr(directory.Size)/unsafe.Sizeof(*runtimeFuncs)), module.codeBase) {
+		return
+	}
+	module.runtimeFuncs = runtimeFuncs
 }
 
 func (module *Module) finalizeSections() error {
@@ -374,7 +378,7 @@ func (module *Module) buildNameExports() error {
 		return errors.New("No export table found")
 	}
 	exports := (*IMAGE_EXPORT_DIRECTORY)(a2p(module.codeBase + uintptr(directory.VirtualAddress)))
-	if exports.NumberOfNames == 0 || exports.NumberOfFunctions == 0 {
+	if exports.NumberOfFunctions == 0 {
 		return errors.New("No functions exported")
 	}
 	if exports.NumberOfNames == 0 {
@@ -659,7 +663,19 @@ func (module *Module) Free() {
 		}
 		module.modules = nil
 	}
+	if module.runtimeFuncs != nil {
+		windows.RtlDeleteFunctionTable(module.runtimeFuncs)
+		module.runtimeFuncs = nil
+	}
 	if module.codeBase != 0 {
+		loadedAddressRangesMu.Lock()
+		for i := range loadedAddressRanges {
+			if loadedAddressRanges[i].start == module.codeBase {
+				loadedAddressRanges = append(loadedAddressRanges[:i], loadedAddressRanges[i+1:]...)
+				break
+			}
+		}
+		loadedAddressRangesMu.Unlock()
 		windows.VirtualFree(module.codeBase, 0, windows.MEM_RELEASE)
 		module.codeBase = 0
 	}
